@@ -9,7 +9,7 @@ from prometheus_client import MetricsHandler
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--port', '-p', default=int(os.environ.get('METRICS_PORT', 8000)), type=int)
+    p.add_argument('--port', '-p', default=int(os.environ.get('METRICS_PORT', 9801)), type=int)
     p.add_argument('--min-interval', type=int, default=int(os.environ.get('MIN_INTERVAL', 5)), help='Minimum time to refresh metrics, in seconds')
     p.add_argument('--verbose', '-v', action='store_true')
     p.add_argument('--debug', '-d', action='store_true')

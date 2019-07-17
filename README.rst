@@ -28,7 +28,7 @@ Usage
 
 App defaults:
 
-- ``port``: 8000
+- ``port``: 9801
 - ``min-interval``: 5
 - ``sql-host``: localhost
 - ``sql-user``: bacula
