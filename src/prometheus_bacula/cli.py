@@ -1,3 +1,4 @@
+import os
 import argparse
 import logging
 import datetime
@@ -8,15 +9,15 @@ from prometheus_client import MetricsHandler
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--port', '-p', default=8000, type=int)
-    p.add_argument('--min-interval', type=int, default=5, help='Minimum time to refresh metrics')
+    p.add_argument('--port', '-p', default=int(os.environ.get('METRICS_PORT', 8000)), type=int)
+    p.add_argument('--min-interval', type=int, default=int(os.environ.get('MIN_INTERVAL', 5)), help='Minimum time to refresh metrics, in seconds')
     p.add_argument('--verbose', '-v', action='store_true')
     p.add_argument('--debug', '-d', action='store_true')
 
-    p.add_argument('--sql-host', action='store_true', default='localhost')
-    p.add_argument('--sql-user', action='store_true', default='bacula')
-    p.add_argument('--sql-db', action='store_true', default='bacula')
-    p.add_argument('--sql-password', action='store_true', default='bacula')
+    p.add_argument('--sql-host', action='store_true', default=os.environ.get('SQL_HOST', 'localhost'), help="Bacula SQL host to connect to")
+    p.add_argument('--sql-user', action='store_true', default=os.environ.get('SQL_USER', 'bacula'), help="SQL user with read access to bacula DB")
+    p.add_argument('--sql-db', action='store_true', default=os.environ.get('SQL_DB', 'bacula'), help="Bacula SQL database name")
+    p.add_argument('--sql-password', action='store_true', default=os.environ.get('SQL_PASSWORD', 'bacula'), help="Password for SQL user")
 
     ns = p.parse_args()
     level = logging.ERROR
