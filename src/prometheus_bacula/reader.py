@@ -3,6 +3,9 @@ import contextlib
 import datetime
 import logging
 
+def timestamp_or_none(v):
+    return v.timestamp() if v else None
+
 class Reader(object):
 
     _connection = None
@@ -78,8 +81,10 @@ class Reader(object):
         return {
             "id": model["JobId"],
             "name": model["Name"].decode(),
-            "start_time": model["StartTime"].timestamp(),
-            "end_time": model["EndTime"].timestamp(),
+            "schedule_time": timestamp_or_none(model["SchedTime"]),
+            "start_time": timestamp_or_none(model["StartTime"]),
+            "end_time": timestamp_or_none(model["EndTime"]),
+            "real_end_time": timestamp_or_none(model["RealEndTime"]),
             "files": model["JobFiles"],
             "status": self.status_map[model["JobStatus"].decode()]["id"],
             "bytes": model["JobBytes"],
@@ -89,23 +94,23 @@ class Reader(object):
     def list_global_finished_jobs(self):
         with self.connection.cursor() as cursor:
             cursor.execute(
-                'select j.Job, j.JobId, j.Name, j.StartTime, j.EndTime, j.JobFiles, j.JobStatus, j.JobBytes, j.Level from Job as j inner join (select Name, max(StartTime) as StartTime from Job group by Name) i on (j.Name = i.Name and j.StartTime = i.StartTime)',
+                'select j.JobId, j.Name, j.SchedTime, j.StartTime, j.EndTime, j.RealEndTime, j.JobFiles, j.JobStatus, j.JobBytes, j.Level from Job as j inner join (select max(JobId) as JobId from Job group by Name) i on (j.JobId = i.JobId)',
             )
             results = cursor.fetchall()
         
         for r in results:
             yield self._job_model_to_dist(r)
 
-    def list_last_finished_jobs(self, limit = 20):
-        with self.connection.cursor() as cursor:
-            cursor.execute(
-                'select Job, JobId, Name, StartTime, EndTime, JobFiles, JobStatus, JobBytes, Level from Job order by JobId desc limit %s',
-                (limit,)
-            )
-            results = cursor.fetchall()
+    # def list_last_finished_jobs(self, limit = 20):
+    #     with self.connection.cursor() as cursor:
+    #         cursor.execute(
+    #             'select Job, JobId, Name, StartTime, EndTime, JobFiles, JobStatus, JobBytes, Level from Job order by JobId desc limit %s',
+    #             (limit,)
+    #         )
+    #         results = cursor.fetchall()
 
-        for r in results:
-            yield self._job_model_to_dist(r)
+    #     for r in results:
+    #         yield self._job_model_to_dist(r)
     
     def get_global_stats(self):
         with self.connection.cursor() as cursor:
