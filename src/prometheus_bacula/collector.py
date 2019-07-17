@@ -23,6 +23,7 @@ class MetricsContainer(object):
 
         self.min_delay_time = datetime.timedelta(seconds=5)
         self.last_update = None
+        self.last_job_names = set()
 
         self.m_finished_job_start = Gauge('bacula_finished_job_start_seconds', 'Job real start time', registry=self.registry, labelnames=["name"])
         self.m_finished_job_end = Gauge('bacula_finished_job_end_seconds', 'Job end time', registry=self.registry, labelnames=["name"])
@@ -39,8 +40,10 @@ class MetricsContainer(object):
             return
         
         self.logger.info("Updating metrics")
+        job_names = set()
         for job in self.reader.list_global_finished_jobs():
             labels = [job["name"]]
+            job_names.add(job["name"])
             self.m_finished_job_start.labels(*labels).set(job["start_time"])
             self.m_finished_job_end.labels(*labels).set(job["end_time"])
             self.m_finished_files.labels(*labels).set(job["files"])
@@ -53,4 +56,18 @@ class MetricsContainer(object):
         for k,v in stats['disk_used_per_job'].items():
             self.m_job_bytes_total.labels(k).set(v)
 
+        for i in self.last_job_names.difference(job_names):
+            self.logger.debug("Removing job %s from metrics", i)
+            labels = [i]
+            self.m_finished_job_start.remove(*labels)
+            self.m_finished_job_end.remove(*labels)
+            self.m_finished_files.remove(*labels)
+            self.m_finished_size.remove(*labels)
+            self.m_finished_status.remove(*labels)
+            self.m_finished_level.remove(*labels)
+            self.m_finished_id.remove(*labels)
+
+            self.m_job_bytes_total.remove(*labels)
+        
+        self.last_job_names = job_names
         self.last_update = datetime.datetime.now()
