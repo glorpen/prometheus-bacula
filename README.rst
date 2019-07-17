@@ -52,8 +52,10 @@ Each env variable has corresponding console option.
 Metrics
 -------
 
+- bacula_finished_job_schedule_seconds
 - bacula_finished_job_start_seconds
 - bacula_finished_job_end_seconds
+- bacula_finished_job_real_end_seconds
 - bacula_finished_job_files_count
 - bacula_finished_job_size_bytes
 - bacula_finished_job_status
