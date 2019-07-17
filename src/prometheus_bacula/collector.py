@@ -10,7 +10,6 @@ class UpdatingRegistryCollector(CollectorRegistry):
     def on_collect(self):
         pass
 
-
 class MetricsContainer(object):
     def __init__(self, reader):
         super(MetricsContainer, self).__init__()
@@ -25,32 +24,39 @@ class MetricsContainer(object):
         self.last_update = None
         self.last_job_names = set()
 
-        self.m_finished_job_start = Gauge('bacula_finished_job_start_seconds', 'Job real start time', registry=self.registry, labelnames=["name"])
-        self.m_finished_job_end = Gauge('bacula_finished_job_end_seconds', 'Job end time', registry=self.registry, labelnames=["name"])
-        self.m_finished_files = Gauge('bacula_finished_job_files_count', 'Number of files fetched in job', registry=self.registry, labelnames=["name"])
-        self.m_finished_size = Gauge('bacula_finished_job_size_bytes', 'Size of job data', registry=self.registry, labelnames=["name"])
-        self.m_finished_status = Gauge('bacula_finished_job_status', 'Job status', registry=self.registry, labelnames=["name"])
-        self.m_finished_level = Gauge('bacula_finished_job_level', 'Job level', registry=self.registry, labelnames=["name"])
-        self.m_finished_id = Gauge('bacula_finished_job_id', 'Job id', registry=self.registry, labelnames=["name"])
+        self._job_metrics = []
+
+        self._create_job_metric("schedule_time", "schedule_seconds", "Job schedule time")
+        self._create_job_metric("start_time", "start_seconds", "Job start time")
+        self._create_job_metric("end_time", "end_seconds", "Job end time")
+        self._create_job_metric("real_end_time", "real_end_seconds", "Job real end time")
+        self._create_job_metric("files", "files_count", "Number of files fetched in job")
+        self._create_job_metric("bytes", "size_bytes", "Size of job data")
+        self._create_job_metric("status", "status", "Job status")
+        self._create_job_metric("level", "level", "Job level")
+        self._create_job_metric("id", "id", "Job id")
 
         self.m_job_bytes_total = Gauge('bacula_job_bytes_total', 'Total size of job', registry=self.registry, labelnames=["name"])
     
+    def _create_job_metric(self, model_field, name, description):
+        m = Gauge('bacula_finished_job_%s' % name, description, registry=self.registry, labelnames=["name"])
+        def update(model):
+            m.labels(model["name"]).set(model[model_field])
+        def remove(name):
+            m.remove([name])
+        self._job_metrics.append((update, remove))
+
     def update(self):
         if self.last_update is not None and (datetime.datetime.now() - self.last_update) <= self.min_delay_time:
             return
         
         self.logger.info("Updating metrics")
+
         job_names = set()
         for job in self.reader.list_global_finished_jobs():
-            labels = [job["name"]]
             job_names.add(job["name"])
-            self.m_finished_job_start.labels(*labels).set(job["start_time"])
-            self.m_finished_job_end.labels(*labels).set(job["end_time"])
-            self.m_finished_files.labels(*labels).set(job["files"])
-            self.m_finished_size.labels(*labels).set(job["bytes"])
-            self.m_finished_status.labels(*labels).set(job["status"])
-            self.m_finished_level.labels(*labels).set(job["level"])
-            self.m_finished_id.labels(*labels).set(job["id"])
+            for updater, _remover in self._job_metrics:
+                updater(job)
         
         stats = self.reader.get_global_stats()
         for k,v in stats['disk_used_per_job'].items():
@@ -58,16 +64,10 @@ class MetricsContainer(object):
 
         for i in self.last_job_names.difference(job_names):
             self.logger.debug("Removing job %s from metrics", i)
-            labels = [i]
-            self.m_finished_job_start.remove(*labels)
-            self.m_finished_job_end.remove(*labels)
-            self.m_finished_files.remove(*labels)
-            self.m_finished_size.remove(*labels)
-            self.m_finished_status.remove(*labels)
-            self.m_finished_level.remove(*labels)
-            self.m_finished_id.remove(*labels)
+            for _updater, remover in self._job_metrics:
+                remover(i)
 
-            self.m_job_bytes_total.remove(*labels)
+            self.m_job_bytes_total.remove([i])
         
         self.last_job_names = job_names
         self.last_update = datetime.datetime.now()
