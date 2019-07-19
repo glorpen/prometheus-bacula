@@ -50,6 +50,7 @@ class Reader(object):
         self._connection = pymysql.connect(
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor,
+            autocommit=True,
             **self._sql_credentials
         )
 
