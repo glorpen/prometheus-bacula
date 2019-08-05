@@ -41,7 +41,9 @@ class MetricsContainer(object):
     def _create_job_metric(self, model_field, name, description):
         m = Gauge('bacula_finished_job_%s' % name, description, registry=self.registry, labelnames=["name"])
         def update(model):
-            m.labels(model["name"]).set(model[model_field])
+            v = model[model_field]
+            v = 'nan' if v is None else v
+            m.labels(model["name"]).set(v)
         def remove(name):
             m.remove([name])
         self._job_metrics.append((update, remove))
