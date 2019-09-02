@@ -4,7 +4,7 @@ import datetime
 import logging
 
 def timestamp_or_none(v):
-    return v.timestamp() if v else None
+    return v.timestamp() if hasattr(v, "timestamp") else None
 
 class Reader(object):
 
